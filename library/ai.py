@@ -1,13 +1,15 @@
-import os.path
+import os
 import time
 from pathlib import Path
 from typing import BinaryIO, Optional, List, Any, Union
 
 import openai
 from openai.types.fine_tuning import FineTuningJob
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 
 from .project import Project
 from .utils import get_file_hash
+from openai import OpenAIError, BadRequestError, APIError
 
 # Status constants
 FINE_TUNING_JOB_IN_SUCCEED_STATUS = ["succeeded"]
@@ -19,6 +21,31 @@ FINE_TUNING_JOB_IN_PROGRESS_STATUS = [
 ]
 
 
+# Retry configuration using tenacity: 5 attempts, exponential backoff starting from 1s up to 10s.
+# Define a custom retry function
+def should_retry(exception):
+    """Custom logic to determine if the exception should trigger a retry."""
+    if isinstance(exception, BadRequestError):
+        # Do not retry on bad request errors (400)
+        return False
+    elif isinstance(exception, APIError):
+        if exception.code == 404:
+            # Retry 5 times for 404 errors
+            return stop_after_attempt(5)(exception)
+        elif exception.code == 500:
+            # Retry up to 100 times for 500 errors
+            return stop_after_attempt(100)(exception)
+    return False  # Default no retry
+
+
+# Retry configuration with exponential backoff
+retry_config = retry(
+    retry=retry_if_exception(should_retry),
+    wait=wait_exponential(multiplier=1, min=1, max=60)
+)
+
+
+@retry_config
 def ask(client: openai.OpenAI, messages: List[Any], model_name: str) -> str:
     """Send a prompt to OpenAI and return the response."""
     response = client.chat.completions.create(
@@ -28,6 +55,7 @@ def ask(client: openai.OpenAI, messages: List[Any], model_name: str) -> str:
     return response.choices[0].message.content
 
 
+@retry_config
 def simple_ask(client: openai.OpenAI, model_name: str, prompt: str, **kwargs) -> str:
     return ask(
         client=client,
@@ -39,20 +67,19 @@ def simple_ask(client: openai.OpenAI, model_name: str, prompt: str, **kwargs) ->
     )
 
 
+@retry_config
 def list_fine_tuning_jobs(project: Project):
-    """
-    Retrieve the list of fine-tuning jobs from OpenAI.
-    """
-    try:
-        return project.get_openai_client().fine_tuning.jobs.list()
-    except Exception as e:
-        print(f"Error while listing fine-tuning jobs: {str(e)}")
-        return None
+    """Retrieve the list of fine-tuning jobs from OpenAI."""
+    return project.get_openai_client().fine_tuning.jobs.list()
 
 
-def handle_fine_tuning_status(project: Project, job_id: str, summary_jsonl_file: str, summary_hash: str) -> Union[bool, FineTuningJob]:
+@retry_config
+def handle_fine_tuning_status(project: Project, job_id: str, summary_jsonl_file: str, summary_hash: str) -> Union[
+    bool, FineTuningJob]:
     """Check and wait for fine-tuning job to finish. Return True if succeeded."""
+
     job_info = get_fine_tune_job_info(job_id=job_id, project=project)
+
     if not job_info:
         return False
 
@@ -86,21 +113,20 @@ def handle_fine_tuning_status(project: Project, job_id: str, summary_jsonl_file:
     return job_info
 
 
+@retry_config
 def get_fine_tune_job_info(job_id: str, project: Project) -> Optional[FineTuningJob]:
     """Retrieve fine-tuning job information from OpenAI."""
-    try:
-        return project.get_openai_client().fine_tuning.jobs.retrieve(fine_tuning_job_id=job_id)
-    except Exception as e:
-        print(f"Failed to retrieve fine-tuning job info: {str(e)}")
-        return None
+    return project.get_openai_client().fine_tuning.jobs.retrieve(fine_tuning_job_id=job_id)
 
 
+@retry_config
 def upload_file_to_openai(project: Project, file: BinaryIO) -> str:
     """Upload file to OpenAI."""
     response = project.get_openai_client().files.create(file=file, purpose='fine-tune')
     return response.id
 
 
+@retry_config
 def upload_training_file(project: Project, file_path: Path) -> Optional[str]:
     """Upload the training file to OpenAI if it hasn't been uploaded already."""
     try:
@@ -114,6 +140,7 @@ def upload_training_file(project: Project, file_path: Path) -> Optional[str]:
         raise
 
 
+@retry_config
 def wait_for_available_fine_tuning_slot(project: Project):
     """Wait for an available fine-tuning slot."""
     while True:
@@ -131,16 +158,13 @@ def wait_for_available_fine_tuning_slot(project: Project):
             time.sleep(project.get_settings().fine_tuning_check_status_delay)
 
 
+@retry_config
 def fine_tune(project: Project, model_name: str, file_id: str) -> Optional[FineTuningJob]:
     """Start a new fine-tuning job."""
-    try:
-        return project.get_openai_client().fine_tuning.jobs.create(
-            model=model_name,
-            training_file=file_id,
-        )
-    except Exception as e:
-        print(f"Error while fine-tuning model: {str(e)}")
-        return None
+    return project.get_openai_client().fine_tuning.jobs.create(
+        model=model_name,
+        training_file=file_id,
+    )
 
 
 def combine_fine_tuning_files(project, combined_file_name: str = 'summary.jsonl') -> Path:

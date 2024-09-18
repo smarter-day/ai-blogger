@@ -17,13 +17,13 @@ def run_project(project_id: str):
 
     summary_jsonl_file = project.get_settings().summary_jsonl_file
     summary_hash = get_file_hash(summary_jsonl_file)
-    fine_tune_job, entry_hash = project.get_db().get_fine_tune_job_info(
+    fine_tune_job_info, entry_hash = project.get_db().get_fine_tune_job_info(
         file_path=str(summary_jsonl_file),
     )
 
     # If hash does not match, upload the file before fine-tuning
     fine_tune_model = None
-    if entry_hash != summary_hash:
+    def do_fine_tuning():
         file_id = ai.upload_training_file(
             project=project,
             file_path=summary_jsonl_file,
@@ -75,9 +75,15 @@ def run_project(project_id: str):
         )
         fine_tune_model = fine_tune_job.fine_tuned_model
         typer.echo(f"Updated fine-tuning job details in db")
+        return fine_tune_model
+    if entry_hash != summary_hash:
+        fine_tune_model = do_fine_tuning()
     else:
         print(f"No changes detected in {summary_jsonl_file}. Skipping fine-tuning.")
-        fine_tune_model = fine_tune_job.fine_tuned_model
+        if fine_tune_job_info:
+            fine_tune_model = fine_tune_job_info.openai_tuning_job_model
+        if not fine_tune_model:
+            fine_tune_model = do_fine_tuning()
 
     article_prompt = project.get_settings().article_prompt_file.read_text()
     titles = project.get_settings().titles_file.read_text().splitlines()
