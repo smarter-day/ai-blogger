@@ -50,25 +50,40 @@ def list_fine_tuning_jobs(project: Project):
         return None
 
 
-def handle_fine_tuning_status(project: Project, job_id: str) -> Union[bool, FineTuningJob]:
+def handle_fine_tuning_status(project: Project, job_id: str, summary_jsonl_file: str, summary_hash: str) -> Union[bool, FineTuningJob]:
     """Check and wait for fine-tuning job to finish. Return True if succeeded."""
     job_info = get_fine_tune_job_info(job_id=job_id, project=project)
     if not job_info:
         return False
 
     if job_info.status in FINE_TUNING_JOB_IN_SUCCEED_STATUS:
+        project.get_db().update_fine_tune_job_info(
+            file_path=str(summary_jsonl_file),
+            file_hash=summary_hash,
+            fine_tuning_job=job_info,
+        )
         return job_info
 
     if job_info.status in FINE_TUNING_JOB_IN_PROGRESS_STATUS:
         while job_info.status in FINE_TUNING_JOB_IN_PROGRESS_STATUS:
-            print(f"Fine-tuning job {job_id} is in progress. Waiting...")
+            print(f"Fine-tuning job {job_id}. Status: {job_info.status}. Waiting...")
+            project.get_db().update_fine_tune_job_info(
+                file_path=str(summary_jsonl_file),
+                file_hash=summary_hash,
+                fine_tuning_job=job_info,
+            )
             time.sleep(project.get_settings().fine_tuning_check_status_delay)
             job_info = get_fine_tune_job_info(job_id=job_id, project=project)
 
         if job_info.status in FINE_TUNING_JOB_IN_SUCCEED_STATUS:
+            project.get_db().update_fine_tune_job_info(
+                file_path=str(summary_jsonl_file),
+                file_hash=summary_hash,
+                fine_tuning_job=job_info,
+            )
             return job_info
     print(f"Fine-tuning job {job_id} failed or was cancelled.")
-    return False
+    return job_info
 
 
 def get_fine_tune_job_info(job_id: str, project: Project) -> Optional[FineTuningJob]:

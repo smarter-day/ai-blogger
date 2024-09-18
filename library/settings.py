@@ -32,8 +32,8 @@ class Settings:
 
         # GPT-related settings (can be overridden by the project env)
         self.gpt_api_delay = int(get_env_var("GPT_API_DELAY", 3))
-        self.fine_tuning_check_status_delay = int(get_env_var("CHECK_STATUS_DELAY", 30))
+        self.fine_tuning_check_status_delay = int(get_env_var("FINE_TUNING_CHECK_STATUS_DELAY", 10))
         self.max_retries = int(get_env_var("MAX_RETRIES", 5))
         self.backoff_time = int(get_env_var("BACKOFF_TIME", 60))
-        self.fine_tuning_max_concurrent_jobs = int(get_env_var("MAX_CONCURRENT_JOBS", 2))
-        self.fine_tuning_base_model = get_env_var("BASE_MODEL")
+        self.fine_tuning_max_concurrent_jobs = int(get_env_var("FINE_TUNING_MAX_CONCURRENT_JOBS", 2))
+        self.fine_tuning_base_model = get_env_var("FINE_TUNING_BASE_MODEL")

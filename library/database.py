@@ -1,63 +1,64 @@
 import atexit
-import sqlite3
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple, Any
 
 from openai.types.fine_tuning import FineTuningJob
+from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+Base = declarative_base()
+
+
+class FineTuningModel(Base):
+    __tablename__ = 'fine_tuning'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    file_path = Column(String, nullable=True, unique=True)
+    file_hash = Column(String, nullable=True, default='')
+    openai_tuning_job_id = Column(String, nullable=True, default='')
+    openai_tuning_job_status = Column(String, nullable=True, default='')
+    openai_tuning_job_model = Column(String, nullable=True, default='')
 
 
 class DatabaseManager:
     def __init__(self, db_file: Path):
-        atexit.register(self.close)
         self.db_path = db_file
-        self.conn = sqlite3.connect(self.db_path)
-        self.create_tables()
+        self.engine = create_engine(f'sqlite:///{self.db_path}', echo=False)
+        self.Session = sessionmaker(bind=self.engine)
+        atexit.register(self.close)
+        self.session = self.Session()
+        Base.metadata.create_all(self.engine)
 
-    def create_tables(self):
-        cursor = self.conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS fine_tuning (
-                file_path TEXT PRIMARY KEY,
-                file_hash TEXT NOT NULL,
-                openai_tuning_job_id TEXT NULL,
-                openai_tuning_job_status TEXT NULL,
-                openai_tuning_job_model TEXT NULL
-            )
-        ''')
-        self.conn.commit()
-
-    def get_fine_tune_job_info(self, file_path: str) -> Tuple[Optional[FineTuningJob], Optional[str]]:
+    def get_fine_tune_job_info(self, file_path: str) -> Tuple[Any, Any]:
         """Returns fine-tuning job info and file hash for a given file path."""
-        cursor = self.conn.cursor()
-        cursor.execute('SELECT * FROM fine_tuning WHERE file_path=?', (file_path,))
-        result = cursor.fetchone()
-        if result:
-            return FineTuningJob(
-                id=result[2],
-                status=result[3],
-                fine_tuned_model=result[4]
-            ), result[1]
+        fine_tune_entry = self.session.query(FineTuningModel).filter_by(file_path=file_path).first()
+        if fine_tune_entry:
+            return fine_tune_entry, str(fine_tune_entry.file_hash)
         else:
             return None, None
 
     def update_fine_tune_job_info(self, file_path: str, file_hash: str, fine_tuning_job: FineTuningJob):
-        """Update existing entry with new openai tuning job info."""
-        cursor = self.conn.cursor()
-        cursor.execute('UPDATE fine_tuning SET '
-                       'file_hash=?, '
-                       'openai_tuning_job_id = ?, '
-                       'openai_tuning_job_status = ?, '
-                       'openai_tuning_job_model = ? '
-                       'WHERE file_path=?',
-                       (
-                           file_hash,
-                           fine_tuning_job.id,
-                           fine_tuning_job.status,
-                           fine_tuning_job.fine_tuned_model,
-                           file_path,
-                       ))
-        self.conn.commit()
+        """Update existing entry with new OpenAI tuning job info."""
+        fine_tune_entry = self.session.query(FineTuningModel).filter_by(file_path=file_path).first()
+
+        if fine_tune_entry:
+            fine_tune_entry.file_hash = file_hash
+            fine_tune_entry.openai_tuning_job_id = fine_tuning_job.id
+            fine_tune_entry.openai_tuning_job_status = fine_tuning_job.status
+            fine_tune_entry.openai_tuning_job_model = fine_tuning_job.fine_tuned_model
+        else:
+            # If the entry does not exist, create a new one
+            fine_tune_entry = FineTuningModel(
+                file_path=file_path,
+                file_hash=file_hash,
+                openai_tuning_job_id=fine_tuning_job.id,
+                openai_tuning_job_status=fine_tuning_job.status,
+                openai_tuning_job_model=fine_tuning_job.fine_tuned_model
+            )
+            self.session.add(fine_tune_entry)
+
+        self.session.commit()
 
     def close(self):
-        if self.conn:
-            self.conn.close()
+        self.session.close()

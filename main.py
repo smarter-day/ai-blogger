@@ -17,7 +17,9 @@ def run_project(project_id: str):
 
     summary_jsonl_file = project.get_settings().summary_jsonl_file
     summary_hash = get_file_hash(summary_jsonl_file)
-    fine_tune_job, entry_hash = project.get_db().get_fine_tune_job_info(file_path=str(summary_jsonl_file))
+    fine_tune_job, entry_hash = project.get_db().get_fine_tune_job_info(
+        file_path=str(summary_jsonl_file),
+    )
 
     # If hash does not match, upload the file before fine-tuning
     fine_tune_model = None
@@ -41,26 +43,38 @@ def run_project(project_id: str):
         )
 
         # Save fine-tuning job details in the database
+        typer.echo(f"Fine-tuning started for {summary_jsonl_file}. "
+                   f"Model: {project.get_settings().fine_tuning_base_model}. "
+                   f"Fine tuning job ID: {fine_tune_job.id}")
         project.get_db().update_fine_tune_job_info(
             file_path=str(summary_jsonl_file),
             file_hash=summary_hash,
             fine_tuning_job=fine_tune_job
         )
+        typer.echo(f"Saved in db fine-tuning job")
 
         # Wait for fine-tuning job to finish
-        result = ai.handle_fine_tuning_status(project=project, job_id=fine_tune_job.id)
-        if result:
-            print(f"Fine-tuning completed successfully. Model: {result.fine_tuned_model}")
+        time.sleep(project.get_settings().fine_tuning_check_status_delay)
+        fine_tune_job = ai.handle_fine_tuning_status(
+            project=project,
+            job_id=fine_tune_job.id,
+            summary_jsonl_file=summary_jsonl_file,
+            summary_hash=summary_hash,
+        )
+        if fine_tune_job:
+            print(f"Fine-tuning completed successfully. Model: {fine_tune_job.fine_tuned_model}")
         else:
-            print(f"Fine-tuning failed for {summary_jsonl_file}. Error: {result.error}")
+            print(f"Fine-tuning failed for {summary_jsonl_file}. Error: {fine_tune_job.error}")
             exit(1)
 
+        typer.echo(f"Updating fine-tuning job details in db")
         project.get_db().update_fine_tune_job_info(
             file_path=str(summary_jsonl_file),
             file_hash=summary_hash,
             fine_tuning_job=fine_tune_job,
         )
         fine_tune_model = fine_tune_job.fine_tuned_model
+        typer.echo(f"Updated fine-tuning job details in db")
     else:
         print(f"No changes detected in {summary_jsonl_file}. Skipping fine-tuning.")
         fine_tune_model = fine_tune_job.fine_tuned_model
