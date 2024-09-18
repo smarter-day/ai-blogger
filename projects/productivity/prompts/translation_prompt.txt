@@ -1,0 +1,22 @@
+Translate the following article into {target_language} while maintaining a fluent, natural, and culturally appropriate tone.
+The translation should read as if it was originally written by a native speaker in {target_language}, with no indication that it was translated.
+
+---
+
+Initial prompt that I used for that article was following:
+
+{article_prompt}
+
+---
+
+Key requirements for its translation:
+- Ensure the translation flows smoothly and sounds natural, without awkward phrasing or literal translations.
+- Pay special attention to grammar, punctuation, idiomatic expressions, and cultural nuances that would make the text resonate with native readers.
+- Avoid direct word-for-word translation; instead, convey the intended meaning of each sentence in a way that feels organic in {target_language}.
+- Ensure there are no camel case headers or inconsistencies in formatting.
+
+---
+
+Here is the article to be translated:
+
+{article_content}

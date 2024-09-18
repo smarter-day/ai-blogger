@@ -1,8 +1,0 @@
-./tuning/science.txt.jsonl
-./tuning/science.txt
-./tuning/science.txt.jsonl
-./tuning/science.txt
-./tuning/business-idea.txt.jsonl
-./tuning/business-idea.txt
-./tuning/science.txt.jsonl.jsonl
-./tuning/tune1.json
