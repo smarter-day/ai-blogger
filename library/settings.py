@@ -25,7 +25,7 @@ class Settings:
         # TODO: move to a child class
         self.total_articles_per_title = int(get_env_var("TOTAL_ARTICLES_PER_TITLE", 3))
         self.titles_file = self.project_base / get_env_var("TITLES_FILE", "titles.txt")
-        self.article_prompt_file = self.prompts_dir / get_env_var("ARTICLE_PROMPT_FILE", "article_prompt.txt")
+        self.article_prompt_file = self.prompts_dir / get_env_var("ARTICLE_PROMPT_FILE", "article_prompt.md")
         self.translation_prompt_file = self.prompts_dir / get_env_var("TRANSLATION_PROMPT_FILE",
                                                                       "translation_prompt.txt")
         self.summary_jsonl_file = self.tuning_dir / get_env_var("SUMMARY_JSONL_FILE", "summary.jsonl")

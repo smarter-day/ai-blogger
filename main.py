@@ -123,8 +123,10 @@ def run_project(project_id: str):
                 typer.echo(f"Generating article {i}/{total_articles_need} for '{title}' in {target_language}...")
                 translated_article = ai.simple_ask(
                     client=project.get_openai_client(),
-                    model_name=fine_tune_model,
+                    # model_name=fine_tune_model,
+                    model_name=project.get_settings().fine_tuning_base_model,
                     prompt=article_prompt,
+                    article_title=title,
                     target_language=target_language,
                 )
                 results_file.write_text(translated_article)
