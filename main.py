@@ -1,4 +1,6 @@
 import time
+from pathlib import Path
+from typing import Optional
 
 import typer
 from dotenv import load_dotenv
@@ -8,6 +10,66 @@ from library.project import Project
 from library.utils import get_file_hash
 
 load_dotenv()
+
+
+# Extracted function for fine-tuning
+def do_fine_tuning(
+        project: Project,
+        summary_jsonl_file: Path,
+        summary_hash: str
+) -> Optional[str]:
+    file_id = ai.upload_training_file(
+        project=project,
+        file_path=summary_jsonl_file,
+    )
+    if not file_id:
+        typer.echo(f"Failed to upload file for fine-tuning: {str(summary_jsonl_file)}")
+        exit(1)
+
+    # When file uploaded, we wait for available slot
+    ai.wait_for_available_fine_tuning_slot(project=project)
+
+    # Fine-tune the uploaded file
+    fine_tune_job = ai.fine_tune(
+        project=project,
+        file_id=file_id,
+        model_name=project.get_settings().fine_tuning_base_model,
+    )
+
+    # Save fine-tuning job details in the database
+    typer.echo(f"Fine-tuning started for {summary_jsonl_file}. "
+               f"Model: {project.get_settings().fine_tuning_base_model}. "
+               f"Fine tuning job ID: {fine_tune_job.id}")
+    project.get_db().update_fine_tune_job_info(
+        file_path=str(summary_jsonl_file),
+        file_hash=summary_hash,
+        fine_tuning_job=fine_tune_job
+    )
+    typer.echo(f"Saved in db fine-tuning job")
+
+    # Wait for fine-tuning job to finish
+    time.sleep(project.get_settings().fine_tuning_check_status_delay)
+    fine_tune_job = ai.handle_fine_tuning_status(
+        project=project,
+        job_id=fine_tune_job.id,
+        summary_jsonl_file=str(summary_jsonl_file),
+        summary_hash=summary_hash,
+    )
+    if fine_tune_job and fine_tune_job.fine_tuned_model:
+        typer.echo(f"Fine-tuning completed successfully. Model: {fine_tune_job.fine_tuned_model}")
+    else:
+        typer.echo(f"Fine-tuning failed for {summary_jsonl_file}. Error: {fine_tune_job.error}")
+        exit(1)
+
+    typer.echo(f"Updating fine-tuning job details in db")
+    project.get_db().update_fine_tune_job_info(
+        file_path=str(summary_jsonl_file),
+        file_hash=summary_hash,
+        fine_tuning_job=fine_tune_job,
+    )
+    fine_tune_model = fine_tune_job.fine_tuned_model
+    typer.echo(f"Updated fine-tuning job details in db")
+    return fine_tune_model
 
 
 def run_project(project_id: str):
@@ -23,67 +85,29 @@ def run_project(project_id: str):
 
     # If hash does not match, upload the file before fine-tuning
     fine_tune_model = None
-    def do_fine_tuning():
-        file_id = ai.upload_training_file(
-            project=project,
-            file_path=summary_jsonl_file,
-        )
-        if not file_id:
-            print(f"Failed to upload file for fine-tuning: {str(summary_jsonl_file)}")
-            exit(1)
-
-        # When file uploaded, we wait for available slot
-        ai.wait_for_available_fine_tuning_slot(project=project)
-
-        # Fine-tune the uploaded file
-        fine_tune_job = ai.fine_tune(
-            project=project,
-            file_id=file_id,
-            model_name=project.get_settings().fine_tuning_base_model,
-        )
-
-        # Save fine-tuning job details in the database
-        typer.echo(f"Fine-tuning started for {summary_jsonl_file}. "
-                   f"Model: {project.get_settings().fine_tuning_base_model}. "
-                   f"Fine tuning job ID: {fine_tune_job.id}")
-        project.get_db().update_fine_tune_job_info(
-            file_path=str(summary_jsonl_file),
-            file_hash=summary_hash,
-            fine_tuning_job=fine_tune_job
-        )
-        typer.echo(f"Saved in db fine-tuning job")
-
-        # Wait for fine-tuning job to finish
-        time.sleep(project.get_settings().fine_tuning_check_status_delay)
-        fine_tune_job = ai.handle_fine_tuning_status(
-            project=project,
-            job_id=fine_tune_job.id,
-            summary_jsonl_file=summary_jsonl_file,
-            summary_hash=summary_hash,
-        )
-        if fine_tune_job:
-            print(f"Fine-tuning completed successfully. Model: {fine_tune_job.fine_tuned_model}")
-        else:
-            print(f"Fine-tuning failed for {summary_jsonl_file}. Error: {fine_tune_job.error}")
-            exit(1)
-
-        typer.echo(f"Updating fine-tuning job details in db")
-        project.get_db().update_fine_tune_job_info(
-            file_path=str(summary_jsonl_file),
-            file_hash=summary_hash,
-            fine_tuning_job=fine_tune_job,
-        )
-        fine_tune_model = fine_tune_job.fine_tuned_model
-        typer.echo(f"Updated fine-tuning job details in db")
-        return fine_tune_model
     if entry_hash != summary_hash:
-        fine_tune_model = do_fine_tuning()
+        fine_tune_model = do_fine_tuning(
+            project=project,
+            summary_jsonl_file=summary_jsonl_file,
+            summary_hash=summary_hash
+        )
+        typer.echo(f"Fine-tuning job model: {fine_tune_model}")
     else:
-        print(f"No changes detected in {summary_jsonl_file}. Skipping fine-tuning.")
+        typer.echo(f"No changes detected in {summary_jsonl_file}")
         if fine_tune_job_info:
             fine_tune_model = fine_tune_job_info.openai_tuning_job_model
+            typer.echo(f"Fine-tuning job model: {fine_tune_model}")
         if not fine_tune_model:
-            fine_tune_model = do_fine_tuning()
+            fine_tune_model = do_fine_tuning(
+                project=project,
+                summary_jsonl_file=summary_jsonl_file,
+                summary_hash=summary_hash
+            )
+            typer.echo(f"Fine-tuning job model: {fine_tune_model}")
+
+    if not fine_tune_model:
+        typer.echo("Failed to fine-tune the model")
+        exit(1)
 
     article_prompt = project.get_settings().article_prompt_file.read_text()
     titles = project.get_settings().titles_file.read_text().splitlines()

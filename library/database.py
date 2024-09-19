@@ -6,6 +6,7 @@ from openai.types.fine_tuning import FineTuningJob
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.attributes import flag_modified
 
 Base = declarative_base()
 
@@ -39,16 +40,21 @@ class DatabaseManager:
             return None, None
 
     def update_fine_tune_job_info(self, file_path: str, file_hash: str, fine_tuning_job: FineTuningJob):
-        """Update existing entry with new OpenAI tuning job info."""
+        """Update existing entry with new OpenAI tuning job info or create a new one."""
         fine_tune_entry = self.session.query(FineTuningModel).filter_by(file_path=file_path).first()
 
         if fine_tune_entry:
+            print(f"DB: Updating fine-tuning job info for {file_path}")
+            # Update the existing entry
             fine_tune_entry.file_hash = file_hash
             fine_tune_entry.openai_tuning_job_id = fine_tuning_job.id
             fine_tune_entry.openai_tuning_job_status = fine_tuning_job.status
             fine_tune_entry.openai_tuning_job_model = fine_tuning_job.fine_tuned_model
+            flag_modified(fine_tune_entry, "file_hash")  # Explicitly flag the field as modified
+            self.session.merge(fine_tune_entry)  # Ensure merge operation is performed
         else:
-            # If the entry does not exist, create a new one
+            print(f"DB: Creating fine-tuning job info for {file_path}")
+            # Create a new entry
             fine_tune_entry = FineTuningModel(
                 file_path=file_path,
                 file_hash=file_hash,

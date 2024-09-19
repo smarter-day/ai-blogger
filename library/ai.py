@@ -31,10 +31,13 @@ def should_retry(exception):
     elif isinstance(exception, APIError):
         if exception.code == 404:
             # Retry 5 times for 404 errors
-            return stop_after_attempt(5)(exception)
-        elif exception.code == 500:
+            return stop_after_attempt(10)(exception)
+        if exception.code == 500:
             # Retry up to 100 times for 500 errors
             return stop_after_attempt(100)(exception)
+        if exception.code == 429:
+            # Retry a lot of times for rate limiting errors
+            return stop_after_attempt(1000)(exception)
     return False  # Default no retry
 
 
@@ -83,24 +86,25 @@ def handle_fine_tuning_status(project: Project, job_id: str, summary_jsonl_file:
     if not job_info:
         return False
 
+    project.get_db().update_fine_tune_job_info(
+        file_path=str(summary_jsonl_file),
+        file_hash=summary_hash,
+        fine_tuning_job=job_info,
+    )
+
     if job_info.status in FINE_TUNING_JOB_IN_SUCCEED_STATUS:
-        project.get_db().update_fine_tune_job_info(
-            file_path=str(summary_jsonl_file),
-            file_hash=summary_hash,
-            fine_tuning_job=job_info,
-        )
         return job_info
 
     if job_info.status in FINE_TUNING_JOB_IN_PROGRESS_STATUS:
         while job_info.status in FINE_TUNING_JOB_IN_PROGRESS_STATUS:
             print(f"Fine-tuning job {job_id}. Status: {job_info.status}. Waiting...")
+            time.sleep(project.get_settings().fine_tuning_check_status_delay)
+            job_info = get_fine_tune_job_info(job_id=job_id, project=project)
             project.get_db().update_fine_tune_job_info(
                 file_path=str(summary_jsonl_file),
                 file_hash=summary_hash,
                 fine_tuning_job=job_info,
             )
-            time.sleep(project.get_settings().fine_tuning_check_status_delay)
-            job_info = get_fine_tune_job_info(job_id=job_id, project=project)
 
         if job_info.status in FINE_TUNING_JOB_IN_SUCCEED_STATUS:
             project.get_db().update_fine_tune_job_info(
