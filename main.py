@@ -72,42 +72,43 @@ def do_fine_tuning(
     return fine_tune_model
 
 
-def run_project(project_id: str):
+def run_project(project_id: str, disable_fine_tuning: bool = False) -> None:
     project = Project(project_id)
     project.ensure_directories_exist()
     ai.combine_fine_tuning_files(project=project)
 
-    summary_jsonl_file = project.get_settings().summary_jsonl_file
-    summary_hash = get_file_hash(summary_jsonl_file)
-    fine_tune_job_info, entry_hash = project.get_db().get_fine_tune_job_info(
-        file_path=str(summary_jsonl_file),
-    )
-
-    # If hash does not match, upload the file before fine-tuning
-    fine_tune_model = None
-    if entry_hash != summary_hash:
-        fine_tune_model = do_fine_tuning(
-            project=project,
-            summary_jsonl_file=summary_jsonl_file,
-            summary_hash=summary_hash
+    if not disable_fine_tuning:
+        summary_jsonl_file = project.get_settings().summary_jsonl_file
+        summary_hash = get_file_hash(summary_jsonl_file)
+        fine_tune_job_info, entry_hash = project.get_db().get_fine_tune_job_info(
+            file_path=str(summary_jsonl_file),
         )
-        typer.echo(f"Fine-tuning job model: {fine_tune_model}")
-    else:
-        typer.echo(f"No changes detected in {summary_jsonl_file}")
-        if fine_tune_job_info:
-            fine_tune_model = fine_tune_job_info.openai_tuning_job_model
-            typer.echo(f"Fine-tuning job model: {fine_tune_model}")
-        if not fine_tune_model:
+
+        # If hash does not match, upload the file before fine-tuning
+        fine_tune_model = None
+        if entry_hash != summary_hash:
             fine_tune_model = do_fine_tuning(
                 project=project,
                 summary_jsonl_file=summary_jsonl_file,
                 summary_hash=summary_hash
             )
             typer.echo(f"Fine-tuning job model: {fine_tune_model}")
+        else:
+            typer.echo(f"No changes detected in {summary_jsonl_file}")
+            if fine_tune_job_info:
+                fine_tune_model = fine_tune_job_info.openai_tuning_job_model
+                typer.echo(f"Fine-tuning job model: {fine_tune_model}")
+            if not fine_tune_model:
+                fine_tune_model = do_fine_tuning(
+                    project=project,
+                    summary_jsonl_file=summary_jsonl_file,
+                    summary_hash=summary_hash
+                )
+                typer.echo(f"Fine-tuning job model: {fine_tune_model}")
 
-    if not fine_tune_model:
-        typer.echo("Failed to fine-tune the model")
-        exit(1)
+        if not fine_tune_model:
+            typer.echo("Failed to fine-tune the model")
+            exit(1)
 
     article_prompt = project.get_settings().article_prompt_file.read_text()
     titles = project.get_settings().titles_file.read_text().splitlines()
