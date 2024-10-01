@@ -43,7 +43,7 @@ You are an expert blog writer specializing in productivity improvement. Your tas
      - **H1**: Main title only.
      - **H2**: All main section headings.
      - **H3**: Subheadings within sections, if necessary.
-   - After the CTA, include a **divider** (e.g., `---`) followed by a list of SEO keywords. Format the keywords as a **code block**, with each keyword separated by exactly one comma and one space (e.g., `keyword1`, `keyword2`, `keyword3`).
+   - After the CTA, include a **divider** (e.g., `---`) followed by a list of SEO keywords. Format each keyword as a **code block** (per keyword), with each keyword separated by exactly one comma and one space as in example: `keyword1`, `keyword2`, `keyword3`.
 
 7. **Tone and Style:**
    - Write in a **conversational and approachable tone** to build trust and rapport with the reader.
