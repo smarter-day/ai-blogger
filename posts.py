@@ -55,6 +55,9 @@ def generate(
         set_languages(languages)
 
     for title in titles:
+        if title.startswith('#'):
+            typer.echo(f"Skipping: {title}")
+            continue
         for i in range(1, total_articles + 1):
             for language_code, target_language in env.get_languages().items():
                 for pt in post_types_list:

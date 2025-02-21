@@ -60,11 +60,13 @@ def ask(client: openai.OpenAI, messages: List[Any], model_name: str) -> str:
 
 @retry_config
 def simple_ask(client: openai.OpenAI, model_name: str, prompt: str, **kwargs) -> str:
+    if len(kwargs):
+        prompt = prompt.format(**kwargs)
     return ask(
         client=client,
         messages=[{
             "role": "user",
-            "content": prompt.format(**kwargs),
+            "content": prompt,
         }],
         model_name=model_name,
     )
