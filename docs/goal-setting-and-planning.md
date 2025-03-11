@@ -1,6 +1,6 @@
 ## Goal Setting & Planning
 
-1. 5 Proven Strategies to Achieve Your Goals  
+1. ✅ 5 Proven Strategies to Achieve Your Goals  
 2. 10 Powerful Techniques to Achieve Your Goals  
 3. 7 Essential Tips for Effective Goal Setting  
 4. 15 Expert Methods for Effective Goal Setting  

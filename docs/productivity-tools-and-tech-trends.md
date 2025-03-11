@@ -1,6 +1,6 @@
 ## Productivity Tools & Tech Trends
 
-1. 10 Best Productivity Apps for 2025  
+1. ✅ 10 Best Productivity Apps for 2025  
 2. 15 Essential Productivity Tools for Remote Work  
 3. Top 20 Productivity Apps to Organize Your Life  
 4. 5 Underrated Productivity Apps You Should Try  

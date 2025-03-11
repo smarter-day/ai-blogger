@@ -1,6 +1,6 @@
 ## Work-Life Balance & Well-Being
 
-1. 10 Effective Work-Life Balance Techniques for Busy Professionals  
+1. ✅ 10 Effective Work-Life Balance Techniques for Busy Professionals  
 2. 7 Proven Strategies to Improve Work-Life Balance and Well-Being  
 3. 15 Work-Life Balance Tips for Reducing Stress and Burnout  
 4. 5 Work-Life Balance Hacks Every Entrepreneur Should Know  

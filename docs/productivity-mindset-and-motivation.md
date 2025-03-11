@@ -1,6 +1,6 @@
 ## Productivity Mindset & Motivation
 
-1. 10 Habits of Highly Motivated People  
+1. ✅ 10 Habits of Highly Motivated People  
 2. 7 Mindset Shifts to Boost Your Productivity  
 3. 5 Reasons You Lose Motivation (and How to Get It Back)  
 4. 15 Inspirational Quotes to Kickstart Your Productivity Mindset  
