@@ -3,7 +3,7 @@
 ### Productivity Guides for Students
 
 1. ✅ 10 Productivity Tips for Students to Ace Exams and Manage Time  
-2. 7 Study Habits of Highly Effective Students  
+2. ✅ 7 Study Habits of Highly Effective Students  
 3. How to Balance Homework, Classes, and Free Time: A Student Productivity Guide  
 4. The Ultimate Guide to Productivity for College Students  
 5. Procrastination No More: Time Management Strategies for Students  
