@@ -71,18 +71,17 @@ At the very top of your response, before the blog post content, include meta inf
 Category: Selected Category
 Title: Generated Meta Title
 Description: Generated Meta Description
+Image Request: MidJourney Query to generate Image for this post 
 
 - The **Category** must be chosen from the following list:
-  - Productivity Strategies & Time Management
-  - Task Management & Organization
-  - Habit Formation & Behavioral Science
-  - Mindfulness & Well-being
-  - Remote Work & Collaboration
-  - Tools & Technology
-  - Personal Development & Motivation
-  - Leadership & Management
-  - Health & Energy Management
-  - Success Stories & Case Studies
+  - Time Management & Prioritization
+  - Habit Formation & Daily Routines
+  - Goal Setting & Planning
+  - Focus & Cognitive Performance
+  - Productivity Tools & Tech Trends
+  - Work-Life Balance & Well-Being
+  - Audience-Specific Productivity Guides
+  - Productivity Mindset & Motivation
 - The **Title** must be an SEO-optimized meta title between **50 and 60 characters**.
 - The **Description** must be an SEO-optimized meta description between **100 and 150 characters**.
 - Follow Google's best practices for meta titles and descriptions: https://developers.google.com/search/docs/appearance/title-link#page-titles.

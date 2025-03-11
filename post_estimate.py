@@ -19,16 +19,14 @@ load_dotenv()
 
 # Define your categories
 CATEGORIES = [
-    "Productivity Strategies & Time Management",
-    "Task Management & Organization",
-    "Habit Formation & Behavioral Science",
-    "Mindfulness & Well-being",
-    "Remote Work & Collaboration",
-    "Tools & Technology",
-    "Personal Development & Motivation",
-    "Leadership & Management",
-    "Health & Energy Management",
-    "Success Stories & Case Studies"
+    "Time Management & Prioritization",
+    "Habit Formation & Daily Routines",
+    "Goal Setting & Planning",
+    "Focus & Cognitive Performance",
+    "Productivity Tools & Tech Trends",
+    "Work-Life Balance & Well-Being",
+    "Audience-Specific Productivity Guides",
+    "Productivity Mindset & Motivation",
 ]
 
 # Function to read the content of the markdown file

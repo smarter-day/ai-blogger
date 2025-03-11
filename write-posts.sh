@@ -1,0 +1,1 @@
+./posts.py productivity --post-types=blog --languages=en

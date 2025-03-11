@@ -55,7 +55,7 @@ def generate(
         set_languages(languages)
 
     for title in titles:
-        if title.startswith('#'):
+        if title.startswith('#') or not title.strip():
             typer.echo(f"Skipping: {title}")
             continue
         for i in range(1, total_articles + 1):
