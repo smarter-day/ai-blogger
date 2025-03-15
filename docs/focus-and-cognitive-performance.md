@@ -20,7 +20,7 @@
 18. 9 Techniques to Improve Your Memory and Recall  
 19. 5 Mind Hacks to Instantly Boost Your Focus  
 20. 10 Lifestyle Changes to Enhance Cognitive Function  
-21. How to Stay Focused in a World Full of Distractions  
+21. ✅ How to Stay Focused in a World Full of Distractions  
 22. How to Improve Your Memory with Simple Daily Practices  
 23. How to Achieve Deep Focus for Maximum Productivity  
 24. How to Train Your Brain to Process Information Faster  
