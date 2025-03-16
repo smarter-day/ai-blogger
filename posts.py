@@ -56,7 +56,7 @@ def generate(
 
     for title in titles:
         if title.startswith('#') or not title.strip():
-            typer.echo(f"Skipping: {title}")
+            # typer.echo(f"Skipping: {title}")
             continue
         for i in range(1, total_articles + 1):
             for language_code, target_language in env.get_languages().items():
@@ -71,22 +71,30 @@ def generate(
                     output_dir = project.get_output_directory(pt) / title
                     output_dir.mkdir(parents=True, exist_ok=True)
                     output_file = output_dir / f"result_{i}.{language_code}.md"
-                    if output_file.exists() and output_file.read_text():
-                        typer.echo(f"Post {i}/{total_articles} for '{title}' already exists: {output_file}")
-                        continue
+                    if not (output_file.exists() and output_file.read_text()):
+                        typer.echo(
+                            f"Generating '{pt.value}' post {i}/{total_articles} for '{title}' in {target_language}..."
+                        )
+                        generated_post = ai.simple_ask(
+                            client=project.get_openai_client(),
+                            model_name=settings.gpt_model,
+                            prompt=prompt,
+                            article_title=title,
+                            target_language=target_language,
+                        )
+                        output_file.write_text(generated_post)
+                        typer.echo(f"Generated post saved to: {output_file}")
 
-                    typer.echo(
-                        f"Generating '{pt.value}' post {i}/{total_articles} for '{title}' in {target_language}..."
-                    )
+                    # Humanize the generated post contents
+                    humanized_file = output_file.parent / f"{output_file.stem}.humanized.md"
+                    if not (humanized_file.exists() and humanized_file.read_text()):
+                        typer.echo(f'Humanizing post contents for: {humanized_file}')
+                        ai.humanize(
+                            project=project,
+                            humanized_output_file=humanized_file,
+                            generated_post=output_file.read_text(),
+                        )
 
-                    generated_post = ai.simple_ask(
-                        client=project.get_openai_client(),
-                        model_name=settings.gpt_model,
-                        prompt=prompt,
-                        article_title=title,
-                        target_language=target_language,
-                    )
-                    output_file.write_text(generated_post)
                     time.sleep(settings.gpt_api_delay)
 
 

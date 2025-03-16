@@ -1,15 +1,19 @@
+import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import BinaryIO, Optional, List, Any, Union
 
 import openai
+import requests
+import typer
+from openai import BadRequestError, APIError
 from openai.types.fine_tuning import FineTuningJob
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 
 from .project import Project
 from .utils import get_file_hash
-from openai import OpenAIError, BadRequestError, APIError
 
 # Status constants
 FINE_TUNING_JOB_IN_SUCCEED_STATUS = ["succeeded"]
@@ -193,3 +197,109 @@ def combine_fine_tuning_files(project, combined_file_name: str = 'summary.jsonl'
 
     summary_file.write_text('\n'.join(combined_data))
     return summary_file
+
+
+def humanize(project, humanized_output_file: Path, generated_post: str):
+    """
+    Takes a text 'generated_post', strips away everything before the first '#'
+    and everything after '---', then submits that cleaned text to Undetectable.ai
+    to be humanized. The final output is saved to <filename>.humanized.md.
+    """
+
+    # 1) Remove everything before the first '#' and everything after '---'
+    text_to_process = generated_post
+
+    # Part (a): Keep everything from the first header onwards
+    header_split = re.split(r"(?m)^#+", text_to_process, maxsplit=1)
+    if len(header_split) == 2:
+        # Re-attach the first '#' to preserve the heading
+        processed_text = "#" + header_split[1]
+    else:
+        # No header found—keep entire text
+        processed_text = text_to_process
+
+    # Part (b): remove from '---' onward
+    processed_text = re.split(r"(?m)^---\s*$", processed_text, maxsplit=1)[0].strip()
+
+    # If the text is too short, the Humanize API may reject it.
+    if len(processed_text) < 50:
+        typer.echo("Warning: Post is too short for the Humanize API (must be >= 50 chars).")
+        # Write the stripped text as the "humanized" version (fallback)
+        humanized_output_file.write_text(processed_text)
+        typer.echo(f"(Fallback) Short blog post written to: {humanized_output_file}")
+        return
+
+    # 2) Submit the text to Undetectable.ai’s Humanize endpoint
+    humanize_token = project.get_settings().humanize_api_token
+    if not humanize_token:
+        typer.echo("Warning: No HUMANIZE_API_TOKEN set in settings. Skipping humanization.")
+        humanized_output_file.write_text(processed_text)
+        return
+
+    submit_url = "https://humanize.undetectable.ai/submit"
+    document_url = "https://humanize.undetectable.ai/document"
+    headers = {
+        "apikey": humanize_token,
+        "Content-Type": "application/json"
+    }
+
+    # Prepare the payload according to the doc examples
+    payload = {
+        "content": processed_text,
+        "readability": "High School",
+        "purpose": "General Writing",
+        "strength": "More Human",
+        "model": "v11",
+    }
+
+    try:
+        # Step A: Submit the document
+        submit_res = requests.post(submit_url, headers=headers, json=payload, timeout=30)
+        if not submit_res.ok:
+            # If the request fails, store the processed_text as fallback
+            typer.echo(f"Humanization submit request failed (HTTP {submit_res.status_code}). Error: {json.dumps(submit_res.json())}")
+            return
+
+        submit_data = submit_res.json()
+        if "error" in submit_data:
+            # e.g. {"error": "Insufficient credits"}
+            typer.echo(f"Humanization error:  Error: {json.dumps(submit_res.json())}")
+            return
+
+        # We expect e.g. {"status": "Document submitted successfully", "id": "..."}
+        doc_id = submit_data.get("id")
+        if not doc_id:
+            typer.echo("No 'id' returned in submit response.")
+            return
+
+        # Step B: Retrieve the document until it's processed (basic polling)
+        # You may need to adjust attempts or delay to suit typical processing time.
+        humanized_text = processed_text  # fallback if retrieval fails
+        for attempt in range(6):  # try up to 6 times
+            doc_res = requests.post(document_url, headers=headers, json={"id": doc_id}, timeout=30)
+            if doc_res.ok:
+                doc_data = doc_res.json()
+                if "error" in doc_data:
+                    # e.g. {"error": "Insufficient credits"} or other
+                    typer.echo(f"Humanization retrieval error: {doc_data['error']}")
+                    break
+
+                output_text = doc_data.get("output")
+                # If 'output' is returned, we have the final text
+                if output_text:
+                    humanized_text = output_text
+                    break
+            else:
+                # If we got a 4xx/5xx, break or keep polling as needed
+                typer.echo(
+                    f"Attempt {attempt + 1} to retrieve doc failed (HTTP {doc_res.status_code}). Error: {json.dumps(doc_res.json())}.")
+                # doc_res.json() might have an error message
+            time.sleep(2)  # wait a bit before next attempt
+
+        # 3) Save the final text as `.humanized.md`
+        humanized_output_file.write_text(humanized_text)
+        typer.echo(f"Humanized blog post written to: {humanized_output_file}")
+
+    except requests.RequestException as e:
+        typer.echo(f"Humanization request error: {e}")
+        raise e

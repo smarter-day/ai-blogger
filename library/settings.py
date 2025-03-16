@@ -71,3 +71,4 @@ class Settings:
         self.backoff_time = int(get_env_var("BACKOFF_TIME", 60))
         self.fine_tuning_max_concurrent_jobs = int(get_env_var("FINE_TUNING_MAX_CONCURRENT_JOBS", 2))
         self.gpt_model = get_env_var("GPT_MODEL")
+        self.humanize_api_token = get_env_var("HUMANIZE_API_TOKEN")

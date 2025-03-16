@@ -48,7 +48,7 @@
 46. Perfectionism: How to Overcome It and Boost Your Productivity  
 47. Grit and Grind: Developing the Resilience to Reach Your Goals  
 48. Flow State 101: How to Enter and Stay in the Zone  
-49. When Motivation Wanes: 7 Tactics to Regain Your Drive  
+49. ✅ When Motivation Wanes: 7 Tactics to Regain Your Drive  
 50. Self-Motivation for Remote Workers: Staying Driven When You're on Your Own  
 51. Mindset of High Achievers: What Top Performers Believe About Productivity  
 52. Intrinsic vs Extrinsic Motivation: How to Find Your True Driving Force  
@@ -72,7 +72,7 @@
 70. Positive Mindset, Productive Life: How Optimism Fuels Success  
 71. Growth vs Fixed Mindset: How Your Beliefs Affect Your Productivity  
 72. 5 Ways to Develop a Growth Mindset for Greater Productivity  
-73. Afternoon Energy Crash? Mindset Tips to Stay Focused When You're Tired  
+73. ✅ Afternoon Energy Crash? Mindset Tips to Stay Focused When You're Tired  
 74. Gamification for Motivation: Turn Your Tasks into a Game to Get Things Done  
 75. Rewards That Work: Using Incentives to Keep Yourself Motivated  
 76. Lazy or Uninspired? How to Tell and What to Do About It  

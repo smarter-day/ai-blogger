@@ -25,13 +25,20 @@ At the very top of your response, before the blog post content, include meta inf
 - The **Title** must be an SEO-optimized meta title between **50 and 60 characters**, following Google's best practices (https://developers.google.com/search/docs/appearance/title-link#page-titles).
 - The **Description** must be an SEO-optimized meta description between **100 and 150 characters**, concise and compelling.
 - The **Image Request** must be a highly detailed MidJourney query focusing on visual elements (not blog content), including:
-  - **Setting:** Specific environment (e.g., modern office, cozy home workspace, bustling café).
-  - **People:** Number, appearance, and actions (e.g., a professional typing, a team collaborating).
-  - **Atmosphere:** Mood or energy (e.g., calm, dynamic, warm).
-  - **Details:** Objects or elements (e.g., laptops, coffee cups, whiteboards) for realism and relevance to the category.
-
-*Example Image Request:*  
-"A realistic scene of a young man in a bright, modern office, focused on a laptop with a planner open beside him. He wears casual business attire, and the desk has a coffee mug and scattered papers. The atmosphere is calm yet productive, with soft natural light streaming through large windows."
+  - **Setting (Environment & Background):**  
+    Include explicit details about the space—furniture style, wall textures, floor type, and architectural elements. Mention the time of day or lighting source (e.g., early morning sunlight filtering through large industrial windows). Incorporate subtle background elements that reinforce the blog’s category (e.g., bookshelves filled with productivity titles, a whiteboard with brainstorming notes, or a desk layout that showcases time-management tools).
+  - **People (Number, Appearance & Actions):**  
+    Specify who’s in the scene, their attire, expressions, and gestures. For instance, indicate one or more individuals—professionals in semi-casual clothing—actively using laptops, writing in planners, or discussing tasks. Add facial detail like a calm focus or a slight smile to convey an engaged and positive mindset.
+  - **Atmosphere (Mood & Tone):**  
+    Describe the emotional feel in vivid terms (e.g., a bright, uplifting atmosphere with soft natural light and warm tones). Emphasize an air of quiet determination or bustling collaboration if multiple people are present. Highlight any color contrasts or lighting nuances (like soft rays of sun creating gentle lens flares).
+  - **Details (Objects & Elements):**  
+    Include relevant props such as coffee cups, sleek smartphones, color-coded sticky notes, or scattered papers. Mention subtle textures (e.g., the matte finish of the desk, the glossy sheen of a ceramic mug). Add nuanced items—a tasteful desk lamp, a digital clock showing early work hours, or potted plants for a touch of natural greenery.
+  - **Composition & Style (Camera Angle, Lens, Focus):**  
+    Specify a photographic or illustration style (e.g., “hyper-realistic,” “cinematic”). Indicate lens type for perspective (e.g., “50mm lens for natural depth,” “slightly shallow depth of field to blur the background”). Mention the angle—eye-level, slightly elevated, or close-up. Highlight any compositional touches (e.g., leading lines toward the subject, balanced framing).
+  - **Final Prompt Example (Use this structure & end parameters):**  
+    “A hyper-realistic, cinematic photograph of one to three people depending on the context of blog text, capturing the natural daylight through [mention window style], with warm light illuminating [describe key objects]. The main subject(s) [describe actions, attire, expressions], surrounded by [detailed description of relevant objects], in a [describe ambiance]. Photographed using a [lens type], with crisp details on the subjects and gently blurred surroundings for an engaging focal point. --ar 16:9 --s 100 --q 2”
+  *Example Image Request:*  
+  "A realistic scene of a young man in a bright, modern office, focused on a laptop with a planner open beside him. He wears casual business attire, and the desk has a coffee mug and scattered papers. The atmosphere is calm yet productive, with soft natural light streaming through large windows."
 
 *Note: Place this meta information at the start of your response.*
 
