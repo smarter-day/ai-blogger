@@ -24,6 +24,50 @@ At the very top of your response, before the blog post content, include meta inf
 
 - The **Title** must be an SEO-optimized meta title between **50 and 60 characters**, following Google's best practices (https://developers.google.com/search/docs/appearance/title-link#page-titles).
 - The **Description** must be an SEO-optimized meta description between **100 and 150 characters**, concise and compelling.
+- The **Image Request** must be a highly detailed MidJourney query focusing on visual elements (not blog content). Below is full instructions of how to generate this MidJourney prompt:
+
+1. **Focus on Visuals, Not Blog Content**
+    - Instruct the model to **exclusively** describe the scene’s visual elements—setting, atmosphere, objects, people, and style—rather than any blog text or abstract concepts.
+
+2. **Setting (Environment & Background)**
+    - Encourage **explicit detail** about architecture (e.g., industrial windows, open-concept layouts, co-working spaces) and interior design (furniture style, wall textures, floor type).
+    - Suggest **multiple possible times of day** (e.g., early morning or late-afternoon sunlight) and diverse lighting sources (natural vs. artificial).
+    - Include **subtle background cues** that reinforce the productivity or professional context (e.g., bookshelves with motivational titles, whiteboards with notes).
+
+3. **People (Number, Appearance & Actions)**
+    - Specify **the number of people** (one to three, for instance) to foster variety.
+    - Clearly describe their attire (semi-casual, business-casual, etc.), **facial expressions** (calm focus, slight smile), and **actions** (typing on laptops, writing in planners, discussing tasks).
+
+4. **Atmosphere (Mood & Tone)**
+    - Use **vivid emotional descriptors** (bright, uplifting, quietly determined, etc.).
+    - Highlight **lighting nuances** (soft rays of sun, lens flares, warm accents) to reinforce the mood (e.g., upbeat collaboration, calm productivity).
+    - Vary the mood between **lively collaboration** (if multiple people) and **focused calm** (if solo).
+
+5. **Details (Objects & Elements)**
+    - Include a **range of props**—coffee cups with glossy surfaces, sleek smartphones, color-coded sticky notes, scattered papers.
+    - Mention **textures** (matte or polished desk surfaces, glossy mugs) and accent items (tasteful desk lamps, digital clocks showing early hours, potted plants for greenery).
+    - Encourage slight randomness in which props appear or how they’re arranged to avoid repetitive images.
+
+6. **Composition & Style (Camera Angle, Lens, Focus)**
+    - Specify a **photographic or illustration style** (e.g., *hyper-realistic*, *cinematic*).
+    - Indicate **lens type** for perspective (e.g., “50mm lens for natural depth” or “slightly shallow depth of field”).
+    - Mention the **camera angle** (eye-level, slightly elevated, or close-up) and how the background is framed or blurred.
+
+7. **Built-In Variety**
+    - Use language that allows for **multiple interpretations** (e.g., “an open-concept office **or** a modern co-working space,” “early morning **or** late-afternoon sunlight”).
+    - Encourage synonyms or alternate phrases for key descriptors to avoid repetitive outputs.
+    - Describe **optional elements** (e.g., presence of additional décor, varied attire colors) to further expand variation.
+
+8. **Final Prompt Structure**
+    - Have the model produce a **single, richly detailed paragraph** that covers the environment, people, atmosphere, objects, and composition.
+    - End with the recommended MidJourney parameters (e.g., `--ar 16:9 --s 100 --q 2`).
+    - Provide an example in the same format.
+
+### **Final Prompt Example (Template)**
+> **“A hyper-realistic, cinematic photograph of one to three people with varying ages and genders, capturing the natural daylight through [describe window style], with warm light illuminating [key objects]. The main subject(s) [describe their appearance, attire, and actions], surrounded by [detailed description of relevant objects], in a [describe the ambiance or mood]. Photographed using a [lens type], with crisp details on the subjects and gently blurred surroundings for an engaging focal point. --ar 16:9 --s 100 --q 2”**
+
+### **Example Image Request**
+> **“A realistic scene of a young professional in a bright, modern loft office, focused on a laptop with a planner open beside them. They wear casual business attire, and the desk has a coffee mug and scattered papers. The atmosphere is calm yet productive, with early morning light streaming through large industrial windows. The shot uses a 50mm lens at eye-level, capturing sharp detail on the subject and a softly blurred background.”**
 
 *Note: Place this meta information at the start of your response.*
 
