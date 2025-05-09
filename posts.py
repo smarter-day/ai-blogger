@@ -94,6 +94,34 @@ def generate(
                             humanized_output_file=humanized_file,
                             generated_post=output_file.read_text(),
                         )
+                    else:
+                        continue
+
+                    humanized_reviewed_file = output_file.parent / f"{output_file.stem}.humanized.reviewed.md"
+                    if not (humanized_reviewed_file.exists() and humanized_reviewed_file.read_text()):
+                        typer.echo(f'Reviewing humanized contents with GPT for: {humanized_file}')
+                        humanized_reviewed_content = ai.simple_ask(
+                            client=project.get_openai_client(),
+                            model_name=settings.gpt_model,
+                            prompt="""You are an expert text editor tasked with reviewing the provided text carefully. Your goal is to enhance readability, correct grammar, remove unnecessary or strange characters, and maintain proper text formatting without altering the original meaning, words, or key information.
+
+Specifically, you must:
+- Correct any spelling, grammar, or punctuation errors.
+- Remove extraneous characters, symbols, or formatting artifacts.
+- Ensure consistent and clear formatting, including paragraphs, spacing, and alignment.
+- Identify headings within the text. If headings are not clearly formatted as such, prepend them with an appropriate number of '#' characters (Markdown syntax) so they match the hierarchy and formatting style of other headings in the document.
+- Preserve all original content and meaning precisely—do not alter phrasing, wording, or informational content beyond these formatting and clarity improvements.
+
+Only perform these actions; do not add, remove, or modify the content's meaning, context, or details in any other way.
+
+Here is the text to edit:
+
+{content}
+""",
+                            content=humanized_file.read_text(),
+                        )
+                        humanized_reviewed_file.write_text(humanized_reviewed_content)
+                        typer.echo(f"Reviewed humanized data and saved to: {humanized_reviewed_file}")
 
                     time.sleep(settings.gpt_api_delay)
 
