@@ -1,0 +1,74 @@
+{
+  "187077626283": {
+    "created": "2025-03-09T16:41:20.308Z",
+    "deletedAt": "1970-01-01T00:00:00Z",
+    "id": "187077626283",
+    "language": "en",
+    "name": "Time Management & Prioritization",
+    "slug": "time-management-prioritization",
+    "updated": "2025-03-09T16:41:20.308Z"
+  },
+  "187077626284": {
+    "created": "2025-03-09T16:41:32.003Z",
+    "deletedAt": "1970-01-01T00:00:00Z",
+    "id": "187077626284",
+    "language": "en",
+    "name": "Habit Formation & Daily Routines",
+    "slug": "habit-formation-daily-routines",
+    "updated": "2025-03-09T16:41:32.003Z"
+  },
+  "187077626285": {
+    "created": "2025-03-09T16:41:44.367Z",
+    "deletedAt": "1970-01-01T00:00:00Z",
+    "id": "187077626285",
+    "language": "en",
+    "name": "Goal Setting & Planning",
+    "slug": "goal-setting-planning",
+    "updated": "2025-03-09T16:41:44.367Z"
+  },
+  "187077626287": {
+    "created": "2025-03-09T16:41:54.290Z",
+    "deletedAt": "1970-01-01T00:00:00Z",
+    "id": "187077626287",
+    "language": "en",
+    "name": "Focus & Cognitive Performance",
+    "slug": "focus-cognitive-performance",
+    "updated": "2025-03-09T16:41:54.290Z"
+  },
+  "187077626293": {
+    "created": "2025-03-09T16:42:04.676Z",
+    "deletedAt": "1970-01-01T00:00:00Z",
+    "id": "187077626293",
+    "language": "en",
+    "name": "Productivity Tools & Tech Trends",
+    "slug": "productivity-tools-tech-trends",
+    "updated": "2025-03-09T16:42:04.676Z"
+  },
+  "187077626295": {
+    "created": "2025-03-09T16:42:15.522Z",
+    "deletedAt": "1970-01-01T00:00:00Z",
+    "id": "187077626295",
+    "language": "en",
+    "name": "Work-Life Balance & Well-Being",
+    "slug": "work-life-balance-well-being",
+    "updated": "2025-03-09T16:42:15.522Z"
+  },
+  "187077626369": {
+    "created": "2025-03-09T16:42:25.071Z",
+    "deletedAt": "1970-01-01T00:00:00Z",
+    "id": "187077626369",
+    "language": "en",
+    "name": "Audience-Specific Productivity Guides",
+    "slug": "audience-specific-productivity-guides",
+    "updated": "2025-03-09T16:42:25.071Z"
+  },
+  "187077626372": {
+    "created": "2025-03-09T16:42:34.898Z",
+    "deletedAt": "1970-01-01T00:00:00Z",
+    "id": "187077626372",
+    "language": "en",
+    "name": "Productivity Mindset & Motivation",
+    "slug": "productivity-mindset-motivation",
+    "updated": "2025-03-09T16:42:34.898Z"
+  }
+}

@@ -9,6 +9,7 @@ This project is an AI-powered article generator that fine-tunes models using Ope
 - Generates and translates articles using AI-powered prompts.
 - Automatically translates generated articles into multiple languages.
 - Manages fine-tuning job statuses and efficiently uploads new training files only when necessary.
+- **Publishes blog posts to HubSpot CMS** with automatic markdown-to-HTML conversion.
 
 ## Multi-Project Approach
 
@@ -201,6 +202,38 @@ You can easily manage multiple projects within this system. Each project has its
     ```bash
     python3 main.py <new_project_id>
     ```
+
+## Publishing to HubSpot
+
+The project includes a HubSpot publishing script that automatically publishes your generated blog posts to HubSpot CMS.
+
+### Quick Start
+
+```bash
+# 1. Configure your HubSpot API token in project.env
+# HUBSPOT_API_TOKEN=your-token-here
+
+# 2. List available content groups (blogs)
+./hubspot-publish.py list-groups productivity
+
+# 3. Preview what would be published (dry run)
+./publish-to-hubspot.sh --dry-run --limit 5
+
+# 4. Publish posts
+./publish-to-hubspot.sh --limit 10
+```
+
+### Features
+
+- Automatically converts markdown to HTML
+- Extracts metadata (title, category, description, keywords)
+- Maps categories to HubSpot content groups
+- Replaces `{url}` placeholders with your app URL
+- Creates posts as DRAFTS for review
+- Tracks published posts to prevent duplicates
+- Selects the latest humanized English version of each post
+
+For detailed instructions, see [HUBSPOT_PUBLISHING.md](HUBSPOT_PUBLISHING.md).
 
 ## License
 
