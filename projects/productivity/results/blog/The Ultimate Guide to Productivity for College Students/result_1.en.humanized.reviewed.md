@@ -176,6 +176,4 @@ Cite: Mihaly Csikszentmihalyi’s “Flow”; Nielsen Norman Group on guidance a
 
 You don’t need more hours; you need better **systems** that align priorities, energy, and attention. From **Eisenhower prioritization** to **time blocking**, from **tiny habits** to **automation**, these strategies help you protect deep work and finish high-impact projects consistently. If you want an all-in-one way to plan focus blocks, batch communications, and track weekly progress, try the productivity app at {url}. It brings these methods into one clean, supportive workflow—so you can do your best work, more often.
 
-## Call to Action
-
 Ready to turn these strategies into daily wins? Explore {url} and build a high-performance routine that sticks.

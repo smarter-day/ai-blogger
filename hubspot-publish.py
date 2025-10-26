@@ -2,13 +2,14 @@
 
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Optional, List, Any
-from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import markdown  # type: ignore
 import requests  # type: ignore
 import typer
 from dotenv import load_dotenv
-import markdown  # type: ignore
 
 from library.env import get_env_var
 from library.project import Project
@@ -229,6 +230,130 @@ def load_authors(project: Project) -> Dict[str, dict]:
         return {}
 
     return json.loads(authors_file.read_text())
+
+
+def parse_datetime_option(value: str) -> int:
+    """Parse ISO datetime string to a UTC timestamp in milliseconds."""
+    sanitized = value.strip()
+    if sanitized.endswith('Z'):
+        sanitized = sanitized[:-1] + '+00:00'
+
+    try:
+        dt = datetime.fromisoformat(sanitized)
+    except ValueError as exc:
+        raise typer.BadParameter(
+            "Invalid datetime format. Use ISO 8601, e.g. 2025-10-26T15:00"
+        ) from exc
+
+    if dt.tzinfo is None:
+        local_tz = datetime.now().astimezone().tzinfo
+        if local_tz is not None:
+            dt = dt.replace(tzinfo=local_tz)
+        else:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+    dt_utc = dt.astimezone(timezone.utc)
+    return int(dt_utc.timestamp() * 1000)
+
+
+def parse_publish_date_value(value: Any) -> Optional[int]:
+    """Normalize HubSpot publish date field to milliseconds."""
+    if value is None:
+        return None
+
+    if isinstance(value, (int, float)):
+        return int(value)
+
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+
+        if stripped.isdigit():
+            return int(stripped)
+
+        try:
+            iso_value = stripped.replace('Z', '+00:00')
+            dt = datetime.fromisoformat(iso_value)
+        except ValueError:
+            return None
+
+        if dt.tzinfo is None:
+            local_tz = datetime.now().astimezone().tzinfo
+            if local_tz is not None:
+                dt = dt.replace(tzinfo=local_tz)
+            else:
+                dt = dt.replace(tzinfo=timezone.utc)
+
+        dt_utc = dt.astimezone(timezone.utc)
+        return int(dt_utc.timestamp() * 1000)
+
+    return None
+
+
+def format_local_datetime(timestamp_ms: int) -> str:
+    """Format a timestamp (ms) to local time string."""
+    dt_local = datetime.fromtimestamp(timestamp_ms / 1000)
+    return dt_local.strftime('%Y-%m-%d %H:%M')
+
+
+def get_latest_publish_date(token: str) -> Optional[int]:
+    """Return the furthest scheduled publish date (future) in HubSpot."""
+    url = "https://api.hubapi.com/cms/v3/blogs/posts"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    params = {
+        "limit": 100,
+        "archived": "false"
+    }
+
+    latest_future_date: Optional[int] = None
+    after: Optional[str] = None
+    now_ms = int(datetime.now().timestamp() * 1000)
+
+    while True:
+        current_params = dict(params)
+        if after:
+            current_params["after"] = after
+
+        try:
+            response = requests.get(
+                url,
+                headers=headers,
+                params=current_params,
+                timeout=30
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as exc:
+            typer.echo(f"⚠️  Could not inspect existing HubSpot posts: {exc}")
+            return None
+
+        data = response.json()
+        for post in data.get("results", []):
+            state = post.get("state", "").upper()
+            if state == "DRAFT":
+                continue
+
+            publish_date = (
+                parse_publish_date_value(post.get("publishDate")) or
+                parse_publish_date_value(post.get("scheduledPublishDate"))
+            )
+
+            if publish_date and publish_date >= now_ms:
+                if (latest_future_date is None or
+                        publish_date > latest_future_date):
+                    latest_future_date = publish_date
+
+        paging = data.get("paging", {})
+        next_cursor = paging.get("next", {}).get("after")
+        if not next_cursor:
+            break
+        after = next_cursor
+
+    return latest_future_date
 
 
 def find_content_group_by_name(
@@ -698,6 +823,19 @@ def publish(
         0,
         "--limit",
         help="Limit number of posts (0 = no limit)"
+    ),
+    start_datetime: Optional[str] = typer.Option(
+        None,
+        "--start-datetime",
+        help="ISO datetime to start scheduling from (local timezone if no TZ)"
+    ),
+    continue_by_scheduled: bool = typer.Option(
+        False,
+        "--continue-by-scheduled",
+        help=(
+            "Continue schedule after the furthest future post already in "
+            "HubSpot"
+        )
     )
 ):
     """
@@ -803,9 +941,82 @@ def publish(
     skipped_count = 0
     error_count = 0
 
-    # Calculate publish dates (first post = now, then +30 min for each)
-    # Start time in milliseconds (HubSpot uses Unix timestamp in milliseconds)
-    base_publish_time = int(datetime.now().timestamp() * 1000)
+    # Get publish interval from environment (in hours), default to 3 hours
+    interval_hours = float(
+        get_env_var("HUBSPOT_PUBLISH_INTERVAL_HOURS", "3")
+    )
+    interval_ms = int(interval_hours * 60 * 60 * 1000)
+
+    typer.echo(f"📅 Post interval: {interval_hours} hours between posts")
+
+    now_ms = int(datetime.now().timestamp() * 1000)
+    base_publish_time = now_ms
+    start_timestamp_ms: Optional[int] = None
+
+    if start_datetime:
+        start_timestamp_ms = parse_datetime_option(start_datetime)
+        if start_timestamp_ms < now_ms:
+            typer.echo(
+                "⚠️  Provided start datetime is in the past. Using current "
+                "time instead."
+            )
+            start_timestamp_ms = now_ms
+
+        base_publish_time = start_timestamp_ms
+        typer.echo(
+            f"📌 Start date: {format_local_datetime(base_publish_time)}"
+        )
+
+    if continue_by_scheduled:
+        if dry_run and not token:
+            typer.echo(
+                "⚠️  Cannot continue schedule without HubSpot token in dry "
+                "run. Using start time or now + interval."
+            )
+            if start_timestamp_ms is not None:
+                base_publish_time = start_timestamp_ms
+            else:
+                base_publish_time = now_ms + interval_ms
+                typer.echo(
+                    "ℹ️  Falling back to now + interval for dry run: "
+                    f"{format_local_datetime(base_publish_time)}"
+                )
+        else:
+            typer.echo("🔁 Inspecting HubSpot for future scheduled posts...")
+            latest_future_date = get_latest_publish_date(token)
+
+            if latest_future_date is not None:
+                candidate_base = latest_future_date + interval_ms
+                if (start_timestamp_ms is not None and
+                        start_timestamp_ms > candidate_base):
+                    candidate_base = start_timestamp_ms
+                if candidate_base < now_ms:
+                    candidate_base = now_ms
+                base_publish_time = candidate_base
+                typer.echo(
+                    f"🔁 Last scheduled post: "
+                    f"{format_local_datetime(latest_future_date)}"
+                )
+                typer.echo(
+                    f"🔁 Next slot begins: "
+                    f"{format_local_datetime(base_publish_time)}"
+                )
+            else:
+                candidate_base = now_ms + interval_ms
+                if (start_timestamp_ms is not None and
+                        start_timestamp_ms > candidate_base):
+                    candidate_base = start_timestamp_ms
+                base_publish_time = candidate_base
+                typer.echo(
+                    "ℹ️  No future scheduled posts found. Starting at "
+                    f"{format_local_datetime(base_publish_time)}"
+                )
+
+    if start_timestamp_ms is None and not continue_by_scheduled:
+        typer.echo(
+            f"🕒 First post scheduled for: "
+            f"{format_local_datetime(base_publish_time)}"
+        )
 
     for title in active_titles:
         # Check if already published
@@ -898,17 +1109,16 @@ def publish(
         else:
             keywords_list = list(keywords_data)
 
-        # Calculate publish date (first post = now, +30min for each subsequent)
-        minutes_offset = published_count * 30 * 60 * 1000
-        publish_date_ms = base_publish_time + minutes_offset
-        publish_datetime = datetime.fromtimestamp(publish_date_ms / 1000)
+        # Calculate publish date, spacing each post by the chosen interval
+        time_offset = published_count * interval_ms
+        publish_date_ms = base_publish_time + time_offset
+        publish_date_str = format_local_datetime(publish_date_ms)
 
         typer.echo(f"   Title: {post_title}")
         typer.echo(f"   Category: {category}")
         typer.echo(f"   Blog ID: {blog_id}")
         typer.echo(f"   Tag IDs: {tag_ids}")
         typer.echo(f"   Author ID: {blog_author_id}")
-        publish_date_str = publish_datetime.strftime('%Y-%m-%d %H:%M')
         typer.echo(f"   Publish Date: {publish_date_str}")
         typer.echo(f"   Description: {str(description)[:100]}...")
         typer.echo(f"   Keywords: {', '.join(keywords_list[:5])}")
