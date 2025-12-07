@@ -773,14 +773,16 @@ def create_blog_post(
     # Limit description to 155 chars
     desc = meta_description[:155] if meta_description else ""
 
+    now_ms = int(datetime.now().timestamp() * 1000)
+    is_future_publish = bool(publish_date and publish_date > now_ms)
+
     payload = {
         "name": title,
         "contentGroupId": content_group_id,
         "slug": slug,
         "postBody": post_body,
         "metaDescription": desc,
-        "useFeaturedImage": bool(featured_image_url),
-        "state": "PUBLISHED"  # Publish immediately
+        "useFeaturedImage": bool(featured_image_url)
     }
 
     # Add blog author if provided
@@ -791,9 +793,16 @@ def create_blog_post(
     if tag_ids:
         payload["tagIds"] = tag_ids
 
-    # Add publish date if provided
-    if publish_date:
+    # Set publish state and timing
+    if is_future_publish:
+        payload["state"] = "SCHEDULED"
+        # Use publishDate for scheduling; also send scheduledPublishDate
         payload["publishDate"] = publish_date
+        payload["scheduledPublishDate"] = publish_date
+    else:
+        payload["state"] = "PUBLISHED"
+        if publish_date:
+            payload["publishDate"] = publish_date
 
     # Add featured image if provided
     if featured_image_url:
@@ -830,7 +839,7 @@ def publish(
         help="ISO datetime to start scheduling from (local timezone if no TZ)"
     ),
     continue_by_scheduled: bool = typer.Option(
-        False,
+        True,
         "--continue-by-scheduled",
         help=(
             "Continue schedule after the furthest future post already in "

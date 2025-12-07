@@ -2,15 +2,17 @@ import json
 import os
 import re
 import time
+from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import BinaryIO, Optional, List, Any, Union
+from typing import Any, BinaryIO, List, Optional, Union
 
 import openai
 import requests
 import typer
-from openai import BadRequestError, APIError
+from openai import APIError, BadRequestError
 from openai.types.fine_tuning import FineTuningJob
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
+from tenacity import (retry, retry_if_exception, stop_after_attempt,
+                      wait_exponential)
 
 from .project import Project
 from .utils import get_file_hash
@@ -84,7 +86,7 @@ def list_fine_tuning_jobs(project: Project):
 
 @retry_config
 def handle_fine_tuning_status(project: Project, job_id: str, summary_jsonl_file: str, summary_hash: str) -> Union[
-    bool, FineTuningJob]:
+        bool, FineTuningJob]:
     """Check and wait for fine-tuning job to finish. Return True if succeeded."""
 
     job_info = get_fine_tune_job_info(job_id=job_id, project=project)
@@ -199,107 +201,239 @@ def combine_fine_tuning_files(project, combined_file_name: str = 'summary.jsonl'
     return summary_file
 
 
+class HumanizerProvider(ABC):
+    """Interface all humanizers must follow."""
+
+    name: str = "humanizer"
+
+    @abstractmethod
+    def humanize(self, text: str) -> str:
+        """Return a humanized version of text or raise on failure."""
+        raise NotImplementedError
+
+
+class RephrasyHumanizer(HumanizerProvider):
+    def __init__(
+        self,
+        api_key: str,
+        api_url: str,
+        model: str = "undetectable",
+        language: str = "",
+        words: bool = False,
+        costs: bool = False,
+        timeout: int = 60,
+    ):
+        self.api_key = api_key
+        self.api_url = api_url
+        self.model = model or "undetectable"
+        self.language = language or ""
+        self.words = bool(words)
+        self.costs = bool(costs)
+        self.timeout = timeout
+        self.name = "rephrasy.ai"
+
+    def humanize(self, text: str) -> str:
+        if not self.api_key:
+            raise ValueError("REPHRASY_API_KEY is not configured")
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "text": text,
+            "model": self.model,
+        }
+
+        if self.language:
+            payload["language"] = self.language
+        if self.words:
+            payload["words"] = True
+        if self.costs:
+            payload["costs"] = True
+
+        response = requests.post(
+            self.api_url,
+            headers=headers,
+            json=payload,
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        # Try common keys the service might return
+        for key in ("output", "result", "text", "rephrased_text"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+
+        raise ValueError("Rephrasy.ai response did not include output text")
+
+
+class UndetectableHumanizer(HumanizerProvider):
+    def __init__(
+        self,
+        api_key: str,
+        submit_url: str = "https://humanize.undetectable.ai/submit",
+        document_url: str = "https://humanize.undetectable.ai/document",
+        attempts: int = 6,
+        poll_delay: int = 2,
+    ):
+        self.api_key = api_key
+        self.submit_url = submit_url
+        self.document_url = document_url
+        self.attempts = attempts
+        self.poll_delay = poll_delay
+        self.name = "undetectable.ai"
+
+    def humanize(self, text: str) -> str:
+        if not self.api_key:
+            raise ValueError("HUMANIZE_API_TOKEN is not configured")
+
+        headers = {
+            "apikey": self.api_key,
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "content": text,
+            "readability": "High School",
+            "purpose": "General Writing",
+            "strength": "More Human",
+            "model": "v11",
+        }
+
+        submit_res = requests.post(
+            self.submit_url,
+            headers=headers,
+            json=payload,
+            timeout=30,
+        )
+        if not submit_res.ok:
+            raise ValueError(
+                f"Submit request failed (HTTP {submit_res.status_code}): "
+                f"{json.dumps(submit_res.json())}"
+            )
+
+        submit_data = submit_res.json()
+        if "error" in submit_data:
+            raise ValueError(f"Humanization error: {json.dumps(submit_data)}")
+
+        doc_id = submit_data.get("id")
+        if not doc_id:
+            raise ValueError("No 'id' returned in submit response.")
+
+        for attempt in range(self.attempts):
+            doc_res = requests.post(
+                self.document_url,
+                headers=headers,
+                json={"id": doc_id},
+                timeout=30,
+            )
+            if doc_res.ok:
+                doc_data = doc_res.json()
+                if "error" in doc_data:
+                    raise ValueError(f"Retrieval error: {doc_data['error']}")
+
+                output_text = doc_data.get("output")
+                if output_text:
+                    return output_text
+            else:
+                typer.echo(
+                    f"Attempt {attempt + 1} retrieve failed "
+                    f"(HTTP {doc_res.status_code}): {json.dumps(doc_res.json())}"
+                )
+            time.sleep(self.poll_delay)
+
+        raise TimeoutError("Undetectable.ai did not return output after polling.")
+
+
+def _resolve_humanizer(settings) -> Optional[HumanizerProvider]:
+    """Choose a humanizer provider based on env-backed settings."""
+    provider = (settings.humanize_provider or "rephrasy").lower()
+
+    def _to_bool(val) -> bool:
+        return str(val).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+    # Preferred provider
+    if provider == "rephrasy":
+        if settings.rephrasy_api_key:
+            return RephrasyHumanizer(
+                api_key=settings.rephrasy_api_key,
+                api_url=settings.rephrasy_api_url,
+                model=settings.rephrasy_model,
+                language=settings.rephrasy_language,
+                words=_to_bool(settings.rephrasy_words),
+                costs=_to_bool(settings.rephrasy_costs),
+            )
+        typer.echo(
+            "Warning: REPHRASY_API_KEY is missing; falling back to Undetectable.ai "
+            "if configured."
+        )
+        if settings.humanize_api_token:
+            return UndetectableHumanizer(api_key=settings.humanize_api_token)
+        return None
+
+    if provider in {"undetectable", "undetectable.ai", "humanize"}:
+        if settings.humanize_api_token:
+            return UndetectableHumanizer(api_key=settings.humanize_api_token)
+        typer.echo(
+            "Warning: HUMANIZE_API_TOKEN is missing; cannot use Undetectable.ai."
+        )
+        return None
+
+    # Unknown provider: try reasonable fallbacks
+    typer.echo(
+        f"Warning: Unknown humanizer provider '{provider}'. "
+        "Defaulting to rephrasy.ai if configured."
+    )
+    if settings.rephrasy_api_key:
+        return RephrasyHumanizer(
+            api_key=settings.rephrasy_api_key,
+            api_url=settings.rephrasy_api_url,
+        )
+    if settings.humanize_api_token:
+        return UndetectableHumanizer(api_key=settings.humanize_api_token)
+    return None
+
+
 def humanize(project, humanized_output_file: Path, generated_post: str):
     """
-    Takes a text 'generated_post', strips away everything before the first '#'
-    and everything after '---', then submits that cleaned text to Undetectable.ai
-    to be humanized. The final output is saved to <filename>.humanized.md.
+    Strip metadata from generated_post, delegate humanization to the configured
+    provider, and write the output.
     """
 
     # 1) Remove everything before the first '#' and everything after '---'
     text_to_process = generated_post
 
-    # Part (a): Keep everything from the first header onwards
     header_split = re.split(r"(?m)^#+", text_to_process, maxsplit=1)
     if len(header_split) == 2:
-        # Re-attach the first '#' to preserve the heading
         processed_text = "#" + header_split[1]
     else:
-        # No header found—keep entire text
         processed_text = text_to_process
 
-    # Part (b): remove from '---' onward
     processed_text = re.split(r"(?m)^---\s*$", processed_text, maxsplit=1)[0].strip()
 
-    # If the text is too short, the Humanize API may reject it.
     if len(processed_text) < 50:
-        typer.echo("Warning: Post is too short for the Humanize API (must be >= 50 chars).")
-        # Write the stripped text as the "humanized" version (fallback)
+        typer.echo(
+            "Warning: Post is too short for the humanizer API (must be >= 50 chars)."
+        )
         humanized_output_file.write_text(processed_text)
         typer.echo(f"(Fallback) Short blog post written to: {humanized_output_file}")
         return
 
-    # 2) Submit the text to Undetectable.ai’s Humanize endpoint
-    humanize_token = project.get_settings().humanize_api_token
-    if not humanize_token:
-        typer.echo("Warning: No HUMANIZE_API_TOKEN set in settings. Skipping humanization.")
+    settings = project.get_settings()
+    provider = _resolve_humanizer(settings)
+
+    if not provider:
+        typer.echo("No humanizer provider configured; writing original content.")
         humanized_output_file.write_text(processed_text)
         return
 
-    submit_url = "https://humanize.undetectable.ai/submit"
-    document_url = "https://humanize.undetectable.ai/document"
-    headers = {
-        "apikey": humanize_token,
-        "Content-Type": "application/json"
-    }
-
-    # Prepare the payload according to the doc examples
-    payload = {
-        "content": processed_text,
-        "readability": "High School",
-        "purpose": "General Writing",
-        "strength": "More Human",
-        "model": "v11",
-    }
-
     try:
-        # Step A: Submit the document
-        submit_res = requests.post(submit_url, headers=headers, json=payload, timeout=30)
-        if not submit_res.ok:
-            # If the request fails, store the processed_text as fallback
-            typer.echo(f"Humanization submit request failed (HTTP {submit_res.status_code}). Error: {json.dumps(submit_res.json())}")
-            return
+        humanized_text = provider.humanize(processed_text)
+    except Exception as exc:
+        typer.echo(f"Humanization via {provider.name} failed: {exc}")
+        humanized_text = processed_text
 
-        submit_data = submit_res.json()
-        if "error" in submit_data:
-            # e.g. {"error": "Insufficient credits"}
-            typer.echo(f"Humanization error:  Error: {json.dumps(submit_res.json())}")
-            return
-
-        # We expect e.g. {"status": "Document submitted successfully", "id": "..."}
-        doc_id = submit_data.get("id")
-        if not doc_id:
-            typer.echo("No 'id' returned in submit response.")
-            return
-
-        # Step B: Retrieve the document until it's processed (basic polling)
-        # You may need to adjust attempts or delay to suit typical processing time.
-        humanized_text = processed_text  # fallback if retrieval fails
-        for attempt in range(6):  # try up to 6 times
-            doc_res = requests.post(document_url, headers=headers, json={"id": doc_id}, timeout=30)
-            if doc_res.ok:
-                doc_data = doc_res.json()
-                if "error" in doc_data:
-                    # e.g. {"error": "Insufficient credits"} or other
-                    typer.echo(f"Humanization retrieval error: {doc_data['error']}")
-                    break
-
-                output_text = doc_data.get("output")
-                # If 'output' is returned, we have the final text
-                if output_text:
-                    humanized_text = output_text
-                    break
-            else:
-                # If we got a 4xx/5xx, break or keep polling as needed
-                typer.echo(
-                    f"Attempt {attempt + 1} to retrieve doc failed (HTTP {doc_res.status_code}). Error: {json.dumps(doc_res.json())}.")
-                # doc_res.json() might have an error message
-            time.sleep(2)  # wait a bit before next attempt
-
-        # 3) Save the final text as `.humanized.md`
-        humanized_output_file.write_text(humanized_text)
-        typer.echo(f"Humanized blog post written to: {humanized_output_file}")
-
-    except requests.RequestException as e:
-        typer.echo(f"Humanization request error: {e}")
-        raise e
+    humanized_output_file.write_text(humanized_text)
+    typer.echo(f"Humanized blog post written to: {humanized_output_file}")

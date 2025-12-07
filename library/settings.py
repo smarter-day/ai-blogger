@@ -1,6 +1,7 @@
 import os
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 from library.env import get_env_var
@@ -72,3 +73,13 @@ class Settings:
         self.fine_tuning_max_concurrent_jobs = int(get_env_var("FINE_TUNING_MAX_CONCURRENT_JOBS", 2))
         self.gpt_model = get_env_var("GPT_MODEL")
         self.humanize_api_token = get_env_var("HUMANIZE_API_TOKEN")
+        self.humanize_provider = get_env_var("HUMANIZE_PROVIDER", "rephrasy")
+        self.rephrasy_api_key = get_env_var("REPHRASY_API_KEY")
+        self.rephrasy_api_url = get_env_var(
+            "REPHRASY_API_URL",
+            "https://v2-humanizer.rephrasy.ai/api"
+        )
+        self.rephrasy_model = get_env_var("REPHRASY_MODEL", "undetectable")
+        self.rephrasy_language = get_env_var("REPHRASY_LANGUAGE", "")
+        self.rephrasy_words = get_env_var("REPHRASY_WORDS", "false")
+        self.rephrasy_costs = get_env_var("REPHRASY_COSTS", "false")
