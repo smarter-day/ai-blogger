@@ -48,29 +48,45 @@ git clone https://github.com/yourusername/ai-blogger.git
 cd ai-blogger
 ```
 
-### 2. Virtual Environment
+### 2. Install and Configure `uv`
 
-Create a Python virtual environment and activate it.
+[`uv`](https://github.com/astral-sh/uv) is a fast Python package and environment manager that replaces raw `pip` usage in this project.
+
+1. Install `uv` (skip this if you already have it):
+
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+
+2. Create a dedicated local environment in `.venv` and activate it:
+
+    ```bash
+    uv venv .venv
+    source .venv/bin/activate
+    ```
+
+To ensure every `uv` command (including `uv sync`) targets `.venv`, export `UV_PROJECT_ENVIRONMENT` once per shell session or add it to your shell startup file:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+export UV_PROJECT_ENVIRONMENT=.venv
 ```
 
 ### 3. Install Dependencies
 
-Install the required Python packages using `pip`:
+Resolve and install project dependencies with `uv` (this reads from `pyproject.toml` and produces an `uv.lock` on the first run):
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
+
+`uv sync` ensures the virtual environment is populated using `uv`'s resolver and installer.
 
 ### 4. AI Support
 
-Download the required spaCy language model for text processing:
+The English spaCy language model (`en_core_web_sm`) is bundled as a direct dependency, so `uv sync` installs it automatically. If you need to refresh the model manually, run:
 
 ```bash
-python -m spacy download en_core_web_sm
+uv run python -m spacy download en_core_web_sm
 ```
 
 ### 5. Prepare Project Configuration
@@ -88,10 +104,29 @@ python -m spacy download en_core_web_sm
 Use the data preparation script to process the training data into the format needed for fine-tuning:
 
 ```bash
-python3 prepare.py
+uv run python prepare.py
 ```
 
 The preparation script processes Markdown and text files, converting them into a format suitable for AI fine-tuning. Markdown files are parsed to retain their hierarchical structure, and plain text files are cleaned up for valuable content extraction.
+
+### 7. Code Quality and Linting
+
+This project uses [`ruff`](https://docs.astral.sh/ruff) for Python linting and formatting, with auto-fix enabled by default.
+
+- Run linting and formatting manually:
+
+    ```bash
+    uv run ruff check
+    uv run ruff format
+    ```
+
+- Install git hooks (run once):
+
+    ```bash
+    uv run pre-commit install
+    ```
+
+The installed pre-commit hooks run `ruff` with `--fix`, so staged Python files are automatically formatted and linted before each commit.
 
 ## Running the Project
 
@@ -100,13 +135,13 @@ The preparation script processes Markdown and text files, converting them into a
 To fine-tune the model and generate articles for a specific project, run the main script and provide the project ID:
 
 ```bash
-python3 main.py <project_id>
+uv run python main.py <project_id>
 ```
 
 For example, to run the `productivity` project:
 
 ```bash
-python3 main.py productivity
+uv run python main.py productivity
 ```
 
 This will:
@@ -158,7 +193,7 @@ The data preparation script (`prepare.py`) is used to process all text and Markd
 To run the data preparation script:
 
 ```bash
-python3 prepare.py
+uv run python prepare.py
 ```
 
 This will process all `.txt` and `.md` files in the project's tuning directory, generating a `.jsonl` file that is ready for fine-tuning.
@@ -200,7 +235,7 @@ You can easily manage multiple projects within this system. Each project has its
 4. Run the new project using:
 
     ```bash
-    python3 main.py <new_project_id>
+    uv run python main.py <new_project_id>
     ```
 
 ## Publishing to HubSpot

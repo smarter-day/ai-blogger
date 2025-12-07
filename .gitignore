@@ -1,2 +1,34 @@
-.venv
+.venv/
+venv/
 .env
+.env.local
+
+# Python cache artifacts
+
+*.py[cod]
+*$py.class
+.Python
+.python-version
+
+# Build artifacts
+*.egg-info/
+build/
+dist/
+
+# Tool caches
+.cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.dmypy.json
+.pyre/
+.nox/
+
+# Coverage
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+
+# Misc
+.DS_Store
