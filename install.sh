@@ -13,3 +13,5 @@ fi
 source .venv/bin/activate
 
 UV_PROJECT_ENVIRONMENT=.venv uv sync
+
+UV_PROJECT_ENVIRONMENT=.venv uv run pre-commit install --install-hooks
